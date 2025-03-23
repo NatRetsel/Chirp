@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func readinessHandler(w http.ResponseWriter, req *http.Request) {
+func handlerReadiness(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path != "/healthz" {
 		http.NotFound(w, req)
 		return
@@ -20,7 +20,7 @@ func main() {
 	const filepathroot = "."
 	mux := http.NewServeMux()
 	mux.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.Dir(filepathroot))))
-	mux.HandleFunc("/healthz", readinessHandler)
+	mux.HandleFunc("/healthz", handlerReadiness)
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
