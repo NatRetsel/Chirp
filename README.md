@@ -1,6 +1,20 @@
 # Twitter clone - Chirp
 Guided project in Golang from boot.dev
 
+
+## Contents
+1. [How to use](#1-how-to-use)
+2. [Route and handlers](#2-route-and-handlers)
+	2.1. [Http request multiplexer](#http-request-multiplexer)
+	2.2. [Http server struct](#http-server-struct)
+	2.3. [Adding handlers](#adding-a-handler)
+	2.4. [Custom handlers](#custom-handler)
+	2.5. [Custom handler function wrapper](#custom-handler-function-wrapper)
+
+## 1. How to use
+WIP
+
+## 2. Route and Handlers
 ### Http request Multiplexer
 We need a way to differentiate and tell which handler gets assigned to specific http requests. A http request multiplexer (mux) is used to route incoming http requests to specific handlers based on the URL path. 
 
