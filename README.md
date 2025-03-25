@@ -1,7 +1,5 @@
-# http_server_golang
-Http server project in go and standard library
-
-Twitter clone - Chirp
+# Twitter clone - Chirp
+Guided project in Golang from boot.dev
 
 ### Http request Multiplexer
 We need a way to differentiate and tell which handler gets assigned to specific http requests. A http request multiplexer (mux) is used to route incoming http requests to specific handlers based on the URL path. 
