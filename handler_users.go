@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	internal "github.com/natretsel/chirpy/internal/auth"
+	"github.com/natretsel/chirpy/internal/database"
 )
 
 type User struct {
@@ -18,7 +20,8 @@ type User struct {
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
 	// Unmarshal the json, retrieve email from body
 	type userParameters struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	type userResponse struct {
 		User
@@ -44,7 +47,14 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	*/
 
 	// create user in DB with the email
-	user, err := cfg.dbQueries.CreateUser(r.Context(), userParam.Email)
+	hashedPassword, err := internal.HashPassword(userParam.Password)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "please use a different password", err)
+	}
+	user, err := cfg.dbQueries.CreateUser(r.Context(), database.CreateUserParams{
+		Email:          userParam.Email,
+		HashedPassword: hashedPassword,
+	})
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Couldn't create user", err)
 		return

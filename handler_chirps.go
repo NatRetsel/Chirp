@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/natretsel/http_server_golang/internal/database"
+	internal "github.com/natretsel/chirpy/internal/auth"
+	"github.com/natretsel/chirpy/internal/database"
 )
 
 type Chirp struct {
@@ -60,8 +61,7 @@ func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserId uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	type cleanedTextResponse struct {
@@ -75,6 +75,19 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
 	}
+
+	bearerToken, err := internal.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "error getting bearer token", err)
+		return
+	}
+
+	userId, err := internal.ValidateJWT(bearerToken, cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "invalid token", err)
+		return
+	}
+
 	cleanedBody, err := validateChirp(params.Body)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error(), err)
@@ -83,7 +96,7 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 
 	chirpParam := database.CreateChirpParams{
 		Body:   cleanedBody,
-		UserID: params.UserId,
+		UserID: userId,
 	}
 	chirp, err := cfg.dbQueries.CreateChirp(r.Context(), chirpParam)
 

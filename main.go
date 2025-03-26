@@ -10,7 +10,7 @@ import (
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"github.com/natretsel/http_server_golang/internal/database"
+	"github.com/natretsel/chirpy/internal/database"
 )
 
 type apiConfig struct {
@@ -18,12 +18,23 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	dbQueries      *database.Queries
 	platform       string
+	secret         string
 }
 
 func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("DB_URL environment variable is not set")
+	}
 	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM environment variable is not set")
+	}
+	secretToken := os.Getenv("SECRET")
+	if secretToken == "" {
+		log.Fatal("SECRET environment variable is not set")
+	}
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		fmt.Printf("error trying to establish connection to db %v :, %v", dbURL, err)
@@ -38,6 +49,7 @@ func main() {
 		fileserverHits: atomic.Int32{},
 		dbQueries:      dbQueries,
 		platform:       platform,
+		secret:         secretToken,
 	}
 
 	mux := http.NewServeMux()
@@ -49,6 +61,7 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsGet)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerChirpsGetByID)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
+	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
