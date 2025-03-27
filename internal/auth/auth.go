@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strings"
@@ -78,4 +80,25 @@ func GetBearerToken(headers http.Header) (string, error) {
 	}
 	return authSplit[1], nil
 
+}
+
+func MakeRefreshToken() (string, error) {
+	token := make([]byte, 32)
+	_, err := rand.Read(token)
+	if err != nil {
+		return "", fmt.Errorf("unable to generate refresh token: %v", err)
+	}
+	return hex.EncodeToString(token), nil
+}
+
+func GetAPIKey(headers http.Header) (string, error) {
+	authorizationKV := headers.Get("Authorization")
+	if len(authorizationKV) == 0 {
+		return "", fmt.Errorf("authorization key not found in header")
+	}
+	authSplit := strings.Split(authorizationKV, " ")
+	if len(authSplit) < 2 || authSplit[0] != "ApiKey" {
+		return "", fmt.Errorf("malformed authorization header")
+	}
+	return authSplit[1], nil
 }

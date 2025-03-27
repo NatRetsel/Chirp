@@ -6,4 +6,4 @@ DEFAULT 'unset';
 
 -- +goose Down
 ALTER TABLE users
-DROP COLUMN hashed_password
+DROP COLUMN hashed_password;

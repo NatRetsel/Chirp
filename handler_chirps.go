@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -40,14 +41,39 @@ func (cfg *apiConfig) handlerChirpsGetByID(w http.ResponseWriter, r *http.Reques
 }
 
 func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
-	// retrieves chirps in ascending order
+	// check for optional query param
+	authorIDStr := r.URL.Query().Get("author_id")
+	order := r.URL.Query().Get("sort")
+	// retrieves all chirps in ascending order
 	chirps, err := cfg.dbQueries.GetChirps(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "couldn't query all chirps", err)
+		return
+	}
+	authorID := uuid.Nil
+	if len(authorIDStr) != 0 {
+		authorID, err = uuid.Parse(authorIDStr)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "invalid author_id", err)
+			return
+		}
+		user, err := cfg.dbQueries.GetUserByID(r.Context(), authorID)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "invalid author", err)
+			return
+		}
+		chirps, err = cfg.dbQueries.GetChirpsByUserID(r.Context(), user.ID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "couldn't query all chirps", err)
+			return
+		}
 	}
 
 	chirpsArr := []Chirp{}
 	for _, c := range chirps {
+		if authorID != uuid.Nil && authorID != c.UserID {
+			continue
+		}
 		chirpsArr = append(chirpsArr, Chirp{
 			ID:        c.ID,
 			CreatedAt: c.CreatedAt,
@@ -55,6 +81,9 @@ func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
 			Body:      c.Body,
 			UserID:    c.UserID,
 		})
+	}
+	if order == "desc" {
+		slices.Reverse(chirpsArr)
 	}
 	respondWithJSON(w, http.StatusOK, chirpsArr)
 }
@@ -68,14 +97,6 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		Chirp
 	}
 
-	decoder := json.NewDecoder(r.Body)
-	params := parameters{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
-		return
-	}
-
 	bearerToken, err := internal.GetBearerToken(r.Header)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "error getting bearer token", err)
@@ -85,6 +106,14 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 	userId, err := internal.ValidateJWT(bearerToken, cfg.secret)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "invalid token", err)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
 	}
 

@@ -6,13 +6,13 @@ import (
 	"time"
 
 	internal "github.com/natretsel/chirpy/internal/auth"
+	"github.com/natretsel/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type userParameters struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds int    `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	decoder := json.NewDecoder(r.Body)
 	loginParam := userParameters{}
@@ -37,13 +37,30 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	timeToExpiry := time.Hour
-	if loginParam.ExpiresInSeconds > 0 && loginParam.ExpiresInSeconds < 3600 {
-		timeToExpiry = time.Duration(loginParam.ExpiresInSeconds) * time.Second
-	}
 
 	jwtToken, err := internal.MakeJWT(user.ID, cfg.secret, timeToExpiry)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error generating jwtToken", err)
+		return
+	}
+
+	refreshToken, err := internal.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error generating Refresh token", err)
+		return
+	}
+
+	// store refresh token in DB
+	_, err = cfg.dbQueries.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:     refreshToken,
+		UpdatedAt: time.Now().UTC(),
+		UserID:    user.ID,
+		ExpiresAt: time.Now().UTC().Add(time.Hour * 24 * 60),
+	})
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error creating refresh token in DB", err)
+		return
 	}
 	type response struct {
 		User
@@ -52,11 +69,13 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	respondWithJSON(w, http.StatusOK, response{
 		User: User{
-			ID:        user.ID,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Email:     user.Email,
+			ID:            user.ID,
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
+			Email:         user.Email,
+			Is_chirpy_red: user.IsChirpyRed.Bool,
 		},
-		Token: jwtToken,
+		Token:        jwtToken,
+		RefreshToken: refreshToken,
 	})
 }
