@@ -1,4 +1,4 @@
-# Twitter clone - Chirp
+# Twitter backend clone - Chirp
 Guided project in Golang from boot.dev
 
 
