@@ -15,7 +15,8 @@ Guided project in Golang from boot.dev
 	- [Third party integration](#third-party-integration)
 	- [Readiness endpoint](#readiness-endpoint) 
 2. [Code walkthrough](#2-code-walkthrough)
-	- [Database]
+	- [Database](#database)
+		- [Schema](#schema)
 	- [Http request multiplexer](#http-request-multiplexer)
 	- [Http server struct](#http-server-struct)
 	- [Adding handlers](#adding-a-handler)
