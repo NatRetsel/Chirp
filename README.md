@@ -3,18 +3,250 @@ Guided project in Golang from boot.dev
 
 
 ## Contents
-1. [How to use](#1-how-to-use)
-2. [Route and handlers](#2-route-and-handlers)
+1. [API endpoints](#1-api-endpoints)
+	- [User Endpoints](#user-endpoints)
+		- [Create user account](#create-user-account)
+		- [Login](#login)
+		- [Update login information](#update-login-information)
+		- [Post chirp](#post-chirp)
+		- [Get all chirps](#get-all-chirps)
+		- [Get chirp by ID](#get-chirp-by-id)
+		- [Delete chirp by ID](#delete-chirp-by-chirp-id)
+	- [Third party integration](#third-party-integration)
+	- [Readiness endpoint](#readiness-endpoint) 
+2. [Code walkthrough](#2-code-walkthrough)
+	- [Database]
 	- [Http request multiplexer](#http-request-multiplexer)
 	- [Http server struct](#http-server-struct)
 	- [Adding handlers](#adding-a-handler)
 	- [Custom handlers](#custom-handler)
 	- [Custom handler function wrapper](#custom-handler-function-wrapper)
 
-## 1. How to use
-WIP
+## 1. API endpoints
+#### User Endpoints
 
-## 2. Route and Handlers
+| HTTP Method | Resource URL            | Purpose                           | Query Param                                           | Auth endpoint? |
+| ----------- | ----------------------- | --------------------------------- | ----------------------------------------------------- | -------------- |
+| POST        | `/api/users`            | Create user account               | -                                                     | -              |
+| POST        | `/api/login`            | Login user                        | -                                                     | -              |
+| PUT         | `/api/users`            | Update login information          | -                                                     | Y              |
+| POST        | `/api/chirps`           | Post chirps                       | -                                                     | Y              |
+| GET         | `/api/chirps`           | Get all chirps                    | "author_id": {chirp_author_id}<br>"sort": asc or desc | -              |
+| GET         | `/api/chirps/{chirpID}` | Get specific chirp by chirp ID    | -                                                     | -              |
+| DELETE      | `/api/chirps/{chirpID}` | Delete specific chirp by chirp ID | -                                                     | Y              |
+
+##### Create user account
+Creates and stores user account in the database. Requires `email`, `password`.
+
+Method and endpoint: `POST /api/users`
+
+Request Body:
+```json
+{
+	"email": "example@email.com",
+	"passowrd": "password123"
+}
+```
+
+Response `200` payload:
+```JSON
+{
+	"User": {
+				"id": "${user_id}",
+				"created_at": "${creation datetime}",
+				"updated_at": "${last updated datetime}",
+				"email": "example@email.com",
+				"is_chirpy_red": "${user.is_chirpy_read}"
+			}
+}
+```
+
+##### Login
+Login user with `email` and `password`
+
+Method and Endpoint: `POST /api/login`
+
+Request Body:
+```JSON
+{
+	"email": "example@email.com",
+	"passowrd": "password123"
+}
+```
+
+Response `200` payload:
+```JSON
+{
+	"User": {
+				"id": "${user_id}",
+				"created_at": "${creation datetime}",
+				"updated_at": "${last updated datetime}",
+				"email": "example@email.com",
+				"is_chirpy_red": "${user.is_chirpy_read}"
+			},
+	"token": "${access_token}",
+	"refresh_token": "${refresh_token}"
+}
+```
+
+##### Update login information
+Update existing user's email and password, requires user to have been authorized.
+
+Method and Endpoint: `PUT /api/users`
+
+Request header:
+```http
+Authorization: Bearer ${access_token}
+```
+
+Request Body:
+```JSON
+{
+	"email": "example@email.com",
+	"passowrd": "password123"
+}
+```
+
+Response `200` payload:
+```JSON
+{
+	"User": {
+				"id": "${user_id}",
+				"created_at": "${creation datetime}",
+				"updated_at": "${last updated datetime}",
+				"email": "example@email.com",
+				"is_chirpy_red": "${user.is_chirpy_read}"
+			}
+}
+```
+
+##### Post chirp
+Permits authorized user to post chirp with max character length of 140 with banned words censored.
+
+Method and endpoint: `POST /api/chirps`
+
+Request header:
+```http
+Authorization: Bearer ${access_token}
+```
+
+Request Body:
+```json
+{
+	"body": "${chirp}"
+}
+```
+
+Response `201` payload:
+```json
+{
+	"Chirp":{
+				"id": "${chirp_id}",
+				"created_at": "${chirp created datetime}",
+				"updated_at": "${chirp last updated datetime}",
+				"body": "${cleaned chirp body}",
+				"user_id": "${chirp author id}"
+			}
+}
+```
+
+
+##### Get all chirps
+Retrieves all chirps in ascending order by creation date. Optional query parameters can be provided as filter.
+
+Method end endpoint: `GET /api/chirps`
+
+Response `200` payload:
+```json
+[
+	{
+		"id": "${chirp_id}",
+		"created_at": "${chirp creation datetime}",
+		"updated_at": "${chirp last updated datetime}",
+		"body": "${chirp_body}",
+		"user_id": "${chirp author id}"
+	},
+	...
+
+]
+```
+
+Optional query params:
+
+| Query param | Purpose                                        |
+| ----------- | ---------------------------------------------- |
+| author_id   | Filters chirps by author_id                    |
+| sort        | asc: ascending order<br>desc: descending order |
+
+##### Get Chirp by ID
+Retrieve specific chirp by ID supplied in path ID.
+
+Method and endpoint: `GET /api/chirps/{chirpID}`
+
+Response `200` payload:
+```json
+{
+	"id": "${chirp_id}",
+	"created_at": "${chirp creation datetime}",
+	"updated_at": "${chirp last updated datetime}",
+	"body": "${chirp_body}",
+	"user_id": "${chirp author id}"
+}
+```
+
+##### Delete chirp by chirp ID
+Delete authorized author's chirp by id provided in the path.
+
+Method and endpoint: `DELETE /api/chirp/{chirpID}`
+
+Request header:
+```http
+Authorization: Bearer ${access_token}
+```
+
+Response `204` if successfully deleted.
+
+
+#### Third party integration
+Webhook for fictitious third party payment provider - Polka. 
+
+| HTTP Method | Resource URL          | Purpose                                     |
+| ----------- | --------------------- | ------------------------------------------- |
+| POST        | `/api/polka/webhooks` | Receives user upgrade status for Chirpy Red |
+
+Request header:
+```http
+Authorization: Bearer ${api_key}
+```
+
+Request Body:
+```json
+{
+	"event": "user.upgrade",
+	"data": {
+				"user_id": "${user_id}"
+			}
+}
+```
+
+Response `204` if successfully upgraded and reflected in database.
+
+#### Readiness endpoint
+
+| HTTP Method | Resource URL   | Purpose                |
+| ----------- | -------------- | ---------------------- |
+| GET         | `/api/healthz` | API readiness endpoint |
+
+
+## 2. Code walkthrough
+### Database
+PostgreSQL v15, goose migration and SQLC for type-safe code generation.
+
+#### Schema
+
+<img src="Chirp.png" alt="Chirpy schema">
+
+
 ### Http request Multiplexer
 We need a way to differentiate and tell which handler gets assigned to specific http requests. A http request multiplexer (mux) is used to route incoming http requests to specific handlers based on the URL path. 
 
